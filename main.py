@@ -63,10 +63,10 @@ class BigInt:
         """Убирает ведущие нули, к примеру: [0, 1, 0, 0] -> [0, 1], а также у нуля принудительно ставит знак +1."""
         while len(self.digits) > 1 and self.digits[-1] == 0:
             self.digits.pop()
-        if self.digits == [0]
+        if self.digits == [0]:
             self.sign = 1
 
-    def _cmp_abs(self, second):
+    def _cmp_abs(self, other):
         """Сравнивает модули: -1 / 0 / 1."""
         if len(self.digits) != len(other.digits):
             if len(self.digits) > len(other.digits):
@@ -74,10 +74,10 @@ class BigInt:
             return -1
     
         for i in range(len(self.digits) - 1, -1, -1):
-        if self.digits[i] != other.digits[i]:
-            if self.digits[i] > other.digits[i]:
-                return 1
-            return -1
+            if self.digits[i] != other.digits[i]:
+                if self.digits[i] > other.digits[i]:
+                    return 1
+                return -1
 
         return 0
 
