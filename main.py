@@ -81,13 +81,13 @@ class BigInt:
 
         return 0
 
-        def __eq__(self, other):
+    def __eq__(self, other):
         """Равенство: когда совпадают знак и цифры."""
         if not isinstance(other, BigInt):
             other = BigInt(other, self.base)
         return self.sign == other.sign and self.digits == other.digits
 
-            def __lt__(self, other):
+    def __lt__(self, other):
         """Меньше: сначала по знаку, потом по модулю."""
         if not isinstance(other, BigInt):
             other = BigInt(other, self.base)
@@ -96,14 +96,70 @@ class BigInt:
         c = self._cmp_abs(other)
         return c < 0 if self.sign > 0 else c > 0
 
-        def __le__(self, other):
-            """Меньше или равно."""
-            return self < other or self == other
+    def __le__(self, other):
+        """Меньше или равно."""
+        return self < other or self == other
 
-        def __gt__(self, other):
-            """Больше. Используем уже написанный __le__."""
-            return not self <= other
+    def __gt__(self, other):
+        """Больше. Используем уже написанный __le__."""
+        return not self <= other
 
-        def __ge__(self, other):
-            """Больше или равно. Используем уже написанный __le__."""
-            return not self < other
+    def __ge__(self, other):
+        """Больше или равно. Используем уже написанный __le__."""
+        return not self < other
+
+    def __neg__(self):
+        """Унарный минус: меняет знак, кроме нуля."""
+        r = self._copy()
+        if r.digits != [0]:
+            r.sign = -r.sign
+        return r
+
+    def __abs__(self):
+        """Модуль числа."""
+        r = self._copy()
+        r.sign = 1
+        return r
+
+    def _add_abs(self, other):
+        """|self| + |other| в столбик с переносом."""
+        base = self.base
+        result = []
+        carry = 0
+        n = max(len(self.digits), len(other.digits))
+        for i in range(n):
+            s = carry
+            if i < len(self.digits):
+                s += self.digits[i]
+            if i < len(other.digits):
+                s += other.digits[i]
+            result.append(s % base)
+            carry = s // base
+        if carry:
+            result.append(carry)
+        r = BigInt(0, base)
+        r.digits = result
+        r.sign = 1
+        r._normalize()
+        return r
+    
+    def _sub_abs(self, other):
+        """|self| - |other| при условии |self| >= |other|."""
+        base = self.base
+        result = []
+        borrow = 0
+        for i in range(len(self.digits)):
+            d = self.digits[i] - borrow
+            if i < len(other.digits):
+                d -= other.digits[i]
+            if d < 0:
+                d += base
+                borrow = 1
+            else:
+                borrow = 0
+            result.append(d)
+        r = BigInt(0, base)
+        r.digits = result
+        r.sign = 1
+        r._normalize()
+        return r
