@@ -190,3 +190,74 @@ class BigInt:
         if not isinstance(other, BigInt):
             other = BigInt(other, self.base)
         return self + (-other)
+
+    def __mul__(self, other):
+        """Умножение: O(n·m)."""
+        if not isinstance(other, BigInt):
+            other = BigInt(other, self.base)
+        base = self.base
+        result = [0] * (len(self.digits) + len(other.digits))
+        for i, da in enumerate(self.digits):
+            carry = 0
+            for j, db in enumerate(other.digits):
+                cur = result[i + j] + da * db + carry
+                result[i + j] = cur % base
+                carry = cur // base
+            k = i + len(other.digits)
+            while carry:
+                cur = result[k] + carry
+                result[k] = cur % base
+                carry = cur // base
+                k += 1
+        r = BigInt(0, base)
+        r.digits = result
+        r.sign = self.sign * other.sign
+        r._normalize()
+        return r
+
+    def _divmod_abs(self, other):
+        """|self| // |other| - функция для целочисленного деления (вспомогательная)"""
+        base = self.base
+        if other.digits == [0]:
+            raise ZeroDivisionError("Деление на ноль")
+        if self._cmp_abs(other) < 0:
+            return BigInt(0, base), self._copy()
+
+        a = self.digits
+        quotient = [0] * len(a)
+        remainder = BigInt(0, base)
+
+        for i in range(len(a) - 1, -1, -1):
+            remainder.digits.insert(0, a[i])
+            remainder._normalize()
+
+            lo, hi = 0, base - 1
+            best = 0
+            while lo <= hi:
+                mid = (lo + hi) // 2
+                trial = other * BigInt(mid, base)
+                if trial._cmp_abs(remainder) <= 0:
+                    best = mid
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+
+            quotient[i] = best
+            if best:
+                remainder = remainder._sub_abs(other * BigInt(best, base))
+
+        q = BigInt(0, base)
+        q.digits = quotient
+        q.sign = 1
+        q._normalize()
+        return q, remainder
+
+    def __floordiv__(self, other):
+        """Целочисленное деление."""
+        if not isinstance(other, BigInt):
+            other = BigInt(other, self.base)
+        q, _ = self._divmod_abs(other)
+        q.sign = self.sign * other.sign
+        if q.digits == [0]:
+            q.sign = 1
+        return q
