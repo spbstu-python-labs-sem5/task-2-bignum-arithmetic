@@ -33,6 +33,7 @@ class BigInt:
             n //= self.base
 
     def _from_string(self, s):
+        """Парсит строку вида '-123' в число (через накопление *10 + цифра)."""
         s = s.strip()
         if not s:
             raise ValueError("Пустая строка")
@@ -50,3 +51,32 @@ class BigInt:
             value = value * ten + BigInt(int(ch), self.base)
         self.digits = value.digits[:]
         self.sign = sign if self.digits != [0] else 1
+
+    def _copy(self):
+        """Возвращает копию числа."""
+        r = BigInt(0, self.base)
+        r.sign = self.sign
+        r.digits = self.digits[:]
+        return r
+    
+    def _normalize(self):
+        """Убирает ведущие нули, к примеру: [0, 1, 0, 0] -> [0, 1], а также у нуля принудительно ставит знак +1."""
+        while len(self.digits) > 1 and self.digits[-1] == 0:
+            self.digits.pop()
+        if self.digits == [0]
+            self.sign = 1
+
+    def _cmp_abs(self, second):
+        """Сравнивает модули: -1 / 0 / 1."""
+        if len(self.digits) != len(other.digits):
+            if len(self.digits) > len(other.digits):
+                return 1
+            return -1
+    
+        for i in range(len(self.digits) - 1, -1, -1):
+        if self.digits[i] != other.digits[i]:
+            if self.digits[i] > other.digits[i]:
+                return 1
+            return -1
+
+        return 0
