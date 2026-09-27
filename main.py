@@ -80,3 +80,30 @@ class BigInt:
             return -1
 
         return 0
+
+        def __eq__(self, other):
+        """Равенство: когда совпадают знак и цифры."""
+        if not isinstance(other, BigInt):
+            other = BigInt(other, self.base)
+        return self.sign == other.sign and self.digits == other.digits
+
+            def __lt__(self, other):
+        """Меньше: сначала по знаку, потом по модулю."""
+        if not isinstance(other, BigInt):
+            other = BigInt(other, self.base)
+        if self.sign != other.sign:
+            return self.sign < other.sign
+        c = self._cmp_abs(other)
+        return c < 0 if self.sign > 0 else c > 0
+
+        def __le__(self, other):
+            """Меньше или равно."""
+            return self < other or self == other
+
+        def __gt__(self, other):
+            """Больше. Используем уже написанный __le__."""
+            return not self <= other
+
+        def __ge__(self, other):
+            """Больше или равно. Используем уже написанный __le__."""
+            return not self < other
