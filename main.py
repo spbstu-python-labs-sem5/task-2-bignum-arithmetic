@@ -253,14 +253,19 @@ class BigInt:
         return q, remainder
 
     def __floordiv__(self, other):
-        """Целочисленное деление."""
+        """Целочисленное деление с округлением вниз."""
         if not isinstance(other, BigInt):
             other = BigInt(other, self.base)
-        q, _ = self._divmod_abs(other)
-        q.sign = self.sign * other.sign
-        if q.digits == [0]:
-            q.sign = 1
-        return q
+        q_abs, r_abs = self._divmod_abs(other)
+        sign = self.sign * other.sign
+
+        if sign < 0 and r_abs.digits != [0]:
+            q_abs = q_abs + BigInt(1, self.base)
+
+        q_abs.sign = sign
+        if q_abs.digits == [0]:
+            q_abs.sign = 1
+        return q_abs
 
     def __str__(self):
         """Строковое представление в десятичной системе."""
