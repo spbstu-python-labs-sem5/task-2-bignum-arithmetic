@@ -275,3 +275,30 @@ class BigInt:
         for d in reversed(self.digits):
             n = n * self.base + d
         return ("-" if self.sign < 0 else "") + str(n)
+
+if __name__ == "__main__":
+    print("=== Демонстрация BigInt ===")
+    a = BigInt(8661)
+    b = BigInt(72)
+
+    print(f"a = {a}")
+    print(f"b = {b}")
+    print(f"a + b = {a + b}")
+    print(f"a - b = {a - b}")
+    print(f"a * b = {a * b}")
+    print(f"a // b = {a // b}")
+
+    print()
+    print("=== Другое основание (16) ===")
+    c = BigInt(255, base=16)
+    d = BigInt(1, base=16)
+    print(f"BigInt(255, base=16) + 1 = {c + d}")
+    print(f"BigInt(255, base=16) * 2 = {c * BigInt(2, base=16)}")
+
+    print()
+    print("=== Отрицательные числа ===")
+    x = BigInt(-100)
+    y = BigInt(7)
+    print(f"-100 // 7 = {x // y}")
+    print(f"-100 + 7  = {x + y}")
+    print(f"-100 * 7  = {x * y}")
