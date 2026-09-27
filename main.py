@@ -261,3 +261,12 @@ class BigInt:
         if q.digits == [0]:
             q.sign = 1
         return q
+
+    def __str__(self):
+        """Строковое представление в десятичной системе."""
+        if self.digits == [0]:
+            return "0"
+        n = 0
+        for d in reversed(self.digits):
+            n = n * self.base + d
+        return ("-" if self.sign < 0 else "") + str(n)
