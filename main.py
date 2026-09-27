@@ -163,3 +163,30 @@ class BigInt:
         r.sign = 1
         r._normalize()
         return r
+
+    def __add__(self, other):
+        """Сложение: одинаковые знаки - складываем модули, разные - вычитаем меньший из большего."""
+        if not isinstance(other, BigInt):
+            other = BigInt(other, self.base)
+        if self.sign == other.sign:
+            r = self._add_abs(other)
+            r.sign = self.sign
+            r._normalize()
+            return r
+        c = self._cmp_abs(other)
+        if c == 0:
+            return BigInt(0, self.base)
+        if c > 0:
+            r = self._sub_abs(other)
+            r.sign = self.sign
+        else: # c < 0
+            r = other._sub_abs(self)
+            r.sign = other.sign
+        r._normalize()
+        return r
+
+    def __sub__(self, other):
+        """Вычитание: self + (-other)."""
+        if not isinstance(other, BigInt):
+            other = BigInt(other, self.base)
+        return self + (-other)
