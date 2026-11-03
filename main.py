@@ -1,13 +1,17 @@
 """Задача №2. Длинная арифметика для целых чисел."""
 
 DEFAULT_BASE = 10
+DEFAULT_MAX_DIGITS = 100
 
 class BigInt:
-    """Целое число произвольной длины в системе счисления по основанию base."""
-    def __init__(self, value=0, base=DEFAULT_BASE):
+    """Целое число в системе счисления base с ограничением max_digits."""
+    def __init__(self, value=0, base=DEFAULT_BASE, max_digits=DEFAULT_MAX_DIGITS):
         if base < 2:
             raise ValueError("Нужно base >= 2")
+        if not isinstance(max_digits, int) or isinstance(max_digits, bool) or max_digits < 1:
+            raise ValueError("Нужно max_digits >= 1")
         self.base = base
+        self.max_digits = max_digits
         self.sign = 1
         self.digits = [0]
 
@@ -20,6 +24,7 @@ class BigInt:
             self._normalize()
         else:
             raise TypeError(f"Неподдерживаемый тип: {type(value).__name__}")
+        self._check_width()
 
     def _from_int(self, n):
         self.sign = 1 if n >= 0 else -1
@@ -33,7 +38,7 @@ class BigInt:
             n //= self.base
 
     def _from_string(self, s):
-        """Парсит строку вида '-123' в число (через накопление *10 + цифра)."""
+        """Парсит десятичную строку в число, хранящееся в основании base."""
         s = s.strip()
         if not s:
             raise ValueError("Пустая строка")
@@ -44,21 +49,46 @@ class BigInt:
             s = s[1:]
         if not s:
             raise ValueError("Строка не содержит цифр")
-        value = BigInt(0, self.base)
-        ten = BigInt(10, self.base)
+        # Строковый ввод — десятичный. Переводим его напрямую в base-ричные
+        # цифры, чтобы разбор работал и при малой разрядности в основании 2.
+        digits = [0]
         for ch in s:
-            if not ch.isdigit(): raise ValueError(f"Недопустимый символ: {ch!r}")
-            value = value * ten + BigInt(int(ch), self.base)
-        self.digits = value.digits[:]
+            if not ch.isdigit():
+                raise ValueError(f"Недопустимый символ: {ch!r}")
+            carry = int(ch)
+            for i in range(len(digits)):
+                current = digits[i] * 10 + carry
+                digits[i] = current % self.base
+                carry = current // self.base
+            while carry:
+                digits.append(carry % self.base)
+                carry //= self.base
+            while len(digits) > 1 and digits[-1] == 0:
+                digits.pop()
+            if len(digits) > self.max_digits:
+                self._raise_overflow()
+
+        self.digits = digits
         self.sign = sign if self.digits != [0] else 1
+
+    def _raise_overflow(self):
+        raise OverflowError(
+            f"Число превышает максимальную разрядность {self.max_digits} "
+            f"в системе счисления с основанием {self.base}"
+        )
+
+    def _check_width(self):
+        """Проверяет, что число занимает не больше max_digits цифр."""
+        if len(self.digits) > self.max_digits:
+            self._raise_overflow()
 
     def _copy(self):
         """Возвращает копию числа."""
-        r = BigInt(0, self.base)
+        r = BigInt(0, self.base, self.max_digits)
         r.sign = self.sign
         r.digits = self.digits[:]
         return r
-    
+
     def _normalize(self):
         """Убирает ведущие нули, к примеру: [0, 1, 0, 0] -> [0, 1], а также у нуля принудительно ставит знак +1."""
         while len(self.digits) > 1 and self.digits[-1] == 0:
@@ -84,13 +114,13 @@ class BigInt:
     def __eq__(self, other):
         """Равенство: когда совпадают знак и цифры."""
         if not isinstance(other, BigInt):
-            other = BigInt(other, self.base)
+            other = BigInt(other, self.base, self.max_digits)
         return self.sign == other.sign and self.digits == other.digits
 
     def __lt__(self, other):
         """Меньше: сначала по знаку, потом по модулю."""
         if not isinstance(other, BigInt):
-            other = BigInt(other, self.base)
+            other = BigInt(other, self.base, self.max_digits)
         if self.sign != other.sign:
             return self.sign < other.sign
         c = self._cmp_abs(other)
@@ -137,7 +167,7 @@ class BigInt:
             carry = s // base
         if carry:
             result.append(carry)
-        r = BigInt(0, base)
+        r = BigInt(0, base, self.max_digits)
         r.digits = result
         r.sign = 1
         r._normalize()
@@ -158,7 +188,7 @@ class BigInt:
             else:
                 borrow = 0
             result.append(d)
-        r = BigInt(0, base)
+        r = BigInt(0, base, self.max_digits)
         r.digits = result
         r.sign = 1
         r._normalize()
@@ -167,15 +197,16 @@ class BigInt:
     def __add__(self, other):
         """Сложение: одинаковые знаки - складываем модули, разные - вычитаем меньший из большего."""
         if not isinstance(other, BigInt):
-            other = BigInt(other, self.base)
+            other = BigInt(other, self.base, self.max_digits)
         if self.sign == other.sign:
             r = self._add_abs(other)
             r.sign = self.sign
             r._normalize()
+            r._check_width()
             return r
         c = self._cmp_abs(other)
         if c == 0:
-            return BigInt(0, self.base)
+            return BigInt(0, self.base, self.max_digits)
         if c > 0:
             r = self._sub_abs(other)
             r.sign = self.sign
@@ -183,18 +214,19 @@ class BigInt:
             r = other._sub_abs(self)
             r.sign = other.sign
         r._normalize()
+        r._check_width()
         return r
 
     def __sub__(self, other):
         """Вычитание: self + (-other)."""
         if not isinstance(other, BigInt):
-            other = BigInt(other, self.base)
+            other = BigInt(other, self.base, self.max_digits)
         return self + (-other)
 
     def __mul__(self, other):
         """Умножение: O(n·m)."""
         if not isinstance(other, BigInt):
-            other = BigInt(other, self.base)
+            other = BigInt(other, self.base, self.max_digits)
         base = self.base
         result = [0] * (len(self.digits) + len(other.digits))
         for i, da in enumerate(self.digits):
@@ -209,9 +241,30 @@ class BigInt:
                 result[k] = cur % base
                 carry = cur // base
                 k += 1
-        r = BigInt(0, base)
+        r = BigInt(0, base, self.max_digits)
         r.digits = result
         r.sign = self.sign * other.sign
+        r._normalize()
+        r._check_width()
+        return r
+
+    def _mul_abs_by_digit(self, digit):
+        """Умножает модуль на одну цифру без проверки ширины результата.
+
+        Вспомогательно используется при делении: пробное произведение может
+        временно иметь на одну цифру больше установленного лимита.
+        """
+        result = []
+        carry = 0
+        for value in self.digits:
+            current = value * digit + carry
+            result.append(current % self.base)
+            carry = current // self.base
+        while carry:
+            result.append(carry % self.base)
+            carry //= self.base
+        r = BigInt(0, self.base, self.max_digits)
+        r.digits = result
         r._normalize()
         return r
 
@@ -221,11 +274,11 @@ class BigInt:
         if other.digits == [0]:
             raise ZeroDivisionError("Деление на ноль")
         if self._cmp_abs(other) < 0:
-            return BigInt(0, base), self._copy()
+            return BigInt(0, base, self.max_digits), self._copy()
 
         a = self.digits
         quotient = [0] * len(a)
-        remainder = BigInt(0, base)
+        remainder = BigInt(0, base, self.max_digits)
 
         for i in range(len(a) - 1, -1, -1):
             remainder.digits.insert(0, a[i])
@@ -235,7 +288,7 @@ class BigInt:
             best = 0
             while lo <= hi:
                 mid = (lo + hi) // 2
-                trial = other * BigInt(mid, base)
+                trial = other._mul_abs_by_digit(mid)
                 if trial._cmp_abs(remainder) <= 0:
                     best = mid
                     lo = mid + 1
@@ -244,9 +297,9 @@ class BigInt:
 
             quotient[i] = best
             if best:
-                remainder = remainder._sub_abs(other * BigInt(best, base))
+                remainder = remainder._sub_abs(other._mul_abs_by_digit(best))
 
-        q = BigInt(0, base)
+        q = BigInt(0, base, self.max_digits)
         q.digits = quotient
         q.sign = 1
         q._normalize()
@@ -255,16 +308,17 @@ class BigInt:
     def __floordiv__(self, other):
         """Целочисленное деление с округлением вниз."""
         if not isinstance(other, BigInt):
-            other = BigInt(other, self.base)
+            other = BigInt(other, self.base, self.max_digits)
         q_abs, r_abs = self._divmod_abs(other)
         sign = self.sign * other.sign
 
         if sign < 0 and r_abs.digits != [0]:
-            q_abs = q_abs + BigInt(1, self.base)
+            q_abs = q_abs + BigInt(1, self.base, self.max_digits)
 
         q_abs.sign = sign
         if q_abs.digits == [0]:
             q_abs.sign = 1
+        q_abs._check_width()
         return q_abs
 
     def __str__(self):
